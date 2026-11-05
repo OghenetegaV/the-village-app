@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-lora), ui-serif, Georgia, serif;
+
+  /* Brand */
+  --color-maroon-950: #3a0f0d;
+  --color-maroon-900: #4b1512;
+  --color-maroon-800: #5e1b17;
+  --color-maroon-700: #6e221d; /* primary */
+  --color-maroon-600: #852d26;
+  --color-maroon-100: #f4e4e1;
+
+  --color-gold-600: #a87531;
+  --color-gold-500: #c08a3e;
+  --color-gold-400: #d2a663;
+  --color-gold-100: #f6ecdc;
+
+  /* Neutrals (warm) */
+  --color-cream-50: #fcfaf7;
+  --color-cream-100: #f7f1ea;
+  --color-cream-200: #efe5d8;
+  --color-cream-300: #e2d4c3;
+
+  --color-ink-900: #2b1d19;
+  --color-ink-700: #4a3b36;
+  --color-ink-500: #7a6b65;
+  --color-ink-400: #9c8f89;
+
+  --color-success-600: #2f7a4f;
+  --color-success-100: #e3f1e8;
+  --color-danger-500: #d23b2f;
+
+  --shadow-card: 0 1px 2px rgb(58 15 13 / 0.04), 0 12px 32px -12px rgb(58 15 13 / 0.18);
+  --shadow-soft: 0 1px 2px rgb(58 15 13 / 0.05), 0 4px 14px -6px rgb(58 15 13 / 0.12);
+
+  --animate-fade-up: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-pop: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-sheet-up: sheet-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.6); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    background: var(--color-cream-50);
+  }
+  body {
+    background: var(--color-cream-50);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    font-feature-settings: "tnum" 1;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-gold-500);
+    outline-offset: 2px;
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
