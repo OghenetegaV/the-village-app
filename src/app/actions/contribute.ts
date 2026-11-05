@@ -2,14 +2,14 @@
 
 import { headers } from "next/headers";
 import { z } from "zod";
+import { getCurrentUser } from "@/server/auth/session";
 import { PaymentGatewayError } from "@/server/payments/paystack";
 import { startContribution, type StartContributionResult } from "@/server/payments/service";
 
 const ContributionSchema = z.object({
   billId: z.string().min(1).max(120),
   amount: z.number().int("Enter a whole naira amount.").positive("Enter an amount greater than ₦0."),
-  email: z.email("Enter a valid email address for your receipt.").max(254),
-  displayName: z.string().trim().max(60).nullable(),
+  anonymous: z.boolean(),
 });
 
 export type ContributionInput = z.input<typeof ContributionSchema>;
@@ -23,6 +23,9 @@ async function appUrl(): Promise<string> {
 }
 
 export async function beginContribution(input: ContributionInput): Promise<StartContributionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Please sign in to contribute." };
+
   const parsed = ContributionSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Please check your details." };
@@ -30,7 +33,12 @@ export async function beginContribution(input: ContributionInput): Promise<Start
 
   try {
     return await startContribution({
-      ...parsed.data,
+      userId: user.id,
+      billId: parsed.data.billId,
+      amount: parsed.data.amount,
+      // The receipt always goes to the account's email; the name shown to the beneficiary is optional.
+      email: user.email,
+      displayName: parsed.data.anonymous ? null : user.fullName,
       callbackUrl: `${await appUrl()}/payments/callback`,
     });
   } catch (error) {

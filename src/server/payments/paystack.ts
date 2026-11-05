@@ -6,7 +6,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * Amounts sent to / received from Paystack are in kobo (₦1 = 100 kobo).
  */
 
-const BASE_URL = "https://api.paystack.co";
+/** Overridable for staging proxies or a local mock gateway in end-to-end tests. */
+const BASE_URL = process.env.PAYSTACK_BASE_URL ?? "https://api.paystack.co";
 
 export class PaymentGatewayError extends Error {
   constructor(

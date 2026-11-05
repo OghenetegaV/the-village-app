@@ -2,10 +2,12 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { validateContribution } from "@/lib/bills";
 import type { Bill, Payment, PaymentStatus } from "@/lib/types";
-import { read, transaction } from "../db/store";
+import { read, transaction, type DatabaseShape } from "../db/store";
+import { notifyContribution, notifyFunded } from "../notifications";
 import { initializeTransaction, verifyTransaction, type VerifiedTransaction } from "./paystack";
 
 export interface StartContributionInput {
+  userId: string;
   billId: string;
   amount: number;
   email: string;
@@ -26,6 +28,9 @@ export async function startContribution(input: StartContributionInput): Promise<
   const { bills } = await read();
   const bill = bills.find((b) => b.id === input.billId);
   if (!bill) return { ok: false, error: "This bill could not be found." };
+  if (bill.ownerId && bill.ownerId === input.userId) {
+    return { ok: false, error: "You can't contribute to a bill you posted." };
+  }
 
   const problem = validateContribution(bill, input.amount, now);
   if (problem) return { ok: false, error: problem };
@@ -41,6 +46,7 @@ export async function startContribution(input: StartContributionInput): Promise<
       bill_id: bill.id,
       bill_title: bill.title,
       contributor_name: input.displayName ?? "Anonymous",
+      user_id: input.userId,
       custom_fields: [
         { display_name: "Bill", variable_name: "bill", value: bill.title },
         { display_name: "Beneficiary", variable_name: "beneficiary", value: bill.owner.name },
@@ -52,6 +58,7 @@ export async function startContribution(input: StartContributionInput): Promise<
     db.payments.push({
       reference,
       billId: bill.id,
+      userId: input.userId,
       amount: input.amount,
       email: input.email,
       displayName: input.displayName,
@@ -104,12 +111,19 @@ export async function confirmPayment(reference: string): Promise<ConfirmationRes
         reason: "We couldn't match this payment to your contribution. Our team has been notified and will reach out.",
       };
     default:
-      return { state: "failed", payment, bill, reason: payment.gatewayMessage || "The payment was not completed." };
+      return {
+        state: "failed",
+        payment,
+        bill,
+        reason: payment.gatewayMessage
+          ? `Your payment was not completed (${payment.gatewayMessage}). You have not been charged for this attempt.`
+          : "Your payment was not completed. You have not been charged for this attempt.",
+      };
   }
 }
 
 function applyVerification(
-  db: { bills: Bill[]; payments: Payment[] },
+  db: DatabaseShape,
   reference: string,
   verified: VerifiedTransaction,
 ) {
@@ -130,10 +144,18 @@ function applyVerification(
       payment.status = "review";
       return;
     }
+    const wasFunded = bill.raisedAmount >= bill.totalAmount;
     bill.raisedAmount += payment.amount;
     bill.contributorCount += 1;
     payment.status = "success";
     payment.confirmedAt = verified.paid_at ?? new Date().toISOString();
+
+    notifyContribution(db, bill, payment.amount, payment.displayName);
+    if (!wasFunded && bill.raisedAmount >= bill.totalAmount) {
+      bill.fundedAt = new Date().toISOString();
+      payment.completedBill = true;
+      notifyFunded(db, bill, payment.userId);
+    }
     return;
   }
 

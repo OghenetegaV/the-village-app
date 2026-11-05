@@ -15,9 +15,8 @@ const MAX_DOTS = 8;
 export function BillCarousel({ bills, now }: { bills: Bill[]; now: number }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
-  const drag = useRef<{ x: number; left: number; moved: boolean } | null>(null);
-
-  const slides = () => Array.from(trackRef.current?.children ?? []) as HTMLElement[];
+  const activeRef = useRef(0);
+  const drag = useRef<{ x: number; left: number; moved: boolean; startIndex: number } | null>(null);
 
   const scrollToIndex = useCallback((index: number) => {
     const track = trackRef.current;
@@ -37,7 +36,7 @@ export function BillCarousel({ bills, now }: { bills: Bill[]; now: number }) {
       const center = track.scrollLeft + track.clientWidth / 2;
       let nearest = 0;
       let best = Infinity;
-      slides().forEach((el, i) => {
+      (Array.from(track.children) as HTMLElement[]).forEach((el, i) => {
         const offset = (el.offsetLeft + el.offsetWidth / 2 - center) / el.offsetWidth;
         const d = Math.min(Math.abs(offset), 1);
         el.style.setProperty("--depth", d.toFixed(3));
@@ -46,6 +45,7 @@ export function BillCarousel({ bills, now }: { bills: Bill[]; now: number }) {
           nearest = i;
         }
       });
+      activeRef.current = nearest;
       setActive(nearest);
     };
     const onScroll = () => {
@@ -66,7 +66,7 @@ export function BillCarousel({ bills, now }: { bills: Bill[]; now: number }) {
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType !== "mouse" || e.button !== 0) return;
     const track = trackRef.current!;
-    drag.current = { x: e.clientX, left: track.scrollLeft, moved: false };
+    drag.current = { x: e.clientX, left: track.scrollLeft, moved: false, startIndex: activeRef.current };
   };
   const onPointerMove = (e: React.PointerEvent) => {
     const state = drag.current;
@@ -87,9 +87,10 @@ export function BillCarousel({ bills, now }: { bills: Bill[]; now: number }) {
     const track = trackRef.current!;
     track.releasePointerCapture?.(e.pointerId);
     const dx = e.clientX - state.x;
+    let target = activeRef.current;
     // A deliberate flick moves at least one card even if it didn't cross the midpoint.
-    const target = Math.abs(dx) > 40 && active === Math.round(active) ? active + (dx < 0 ? 1 : -1) : active;
-    const clamped = Math.max(0, Math.min(bills.length - 1, dx < 0 ? Math.max(target, active) : Math.min(target, active)));
+    if (target === state.startIndex && Math.abs(dx) > 40) target += dx < 0 ? 1 : -1;
+    const clamped = Math.max(0, Math.min(bills.length - 1, target));
     scrollToIndex(clamped);
     window.setTimeout(() => (track.style.scrollSnapType = ""), 450);
     // Swallow the click that follows a drag so it doesn't open the card.
@@ -124,7 +125,6 @@ export function BillCarousel({ bills, now }: { bills: Bill[]; now: number }) {
             role="group"
             aria-roledescription="slide"
             aria-label={`${i + 1} of ${bills.length}: ${bill.title}`}
-            aria-hidden={i !== active ? undefined : undefined}
             className="w-[var(--card-w)] shrink-0 snap-center snap-always [--depth:1] [transform:scale(calc(1-var(--depth)*0.08))] [opacity:calc(1-var(--depth)*0.3)] transition-[transform,opacity] duration-150 ease-out will-change-transform"
           >
             <BillCard bill={bill} now={now} priority={i < 2} />

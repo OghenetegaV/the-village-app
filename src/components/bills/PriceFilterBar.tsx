@@ -16,7 +16,7 @@ export function PriceFilterBar({
 
   return (
     <div role="group" aria-label="Filter by total bill amount" className="relative">
-      <div className="no-scrollbar flex snap-x gap-2.5 overflow-x-auto px-4 py-1 sm:px-6">
+      <div className="no-scrollbar flex snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 py-1 sm:scroll-px-6 sm:px-6">
         {options.map((option) => {
           const active = option.id === value;
           return (

@@ -18,6 +18,7 @@ export function percentFunded(bill: Pick<Bill, "totalAmount" | "raisedAmount">):
 }
 
 export function billStatus(bill: Bill, now: number): BillStatus {
+  if (bill.removedAt) return "removed";
   if (bill.completedAt) return "completed";
   if (bill.raisedAmount >= bill.totalAmount) return "funded";
   if (new Date(bill.deadline).getTime() < now) return "expired";
@@ -41,12 +42,15 @@ export function filterBills<T extends Bill>(bills: T[], { category, price }: Bil
 
 /**
  * Feed order: open bills first (closest to their deadline first), then fully funded, then completed.
- * Expired bills that never got funded are not shown in discovery.
+ * Expired bills that never got funded, and bills removed by an admin, are not shown in discovery.
  */
 export function sortForFeed(bills: Bill[], now: number): Bill[] {
-  const rank: Record<BillStatus, number> = { open: 0, funded: 1, completed: 2, expired: 3 };
+  const rank: Record<BillStatus, number> = { open: 0, funded: 1, completed: 2, expired: 3, removed: 4 };
   return bills
-    .filter((b) => billStatus(b, now) !== "expired")
+    .filter((b) => {
+      const s = billStatus(b, now);
+      return s !== "expired" && s !== "removed";
+    })
     .sort((a, b) => {
       const r = rank[billStatus(a, now)] - rank[billStatus(b, now)];
       if (r !== 0) return r;

@@ -71,17 +71,17 @@ export function BillCard({ bill, now, priority = false }: { bill: Bill; now: num
         <dl className="mt-4 grid grid-cols-3 divide-x divide-cream-200">
           <div className="pr-3">
             <dt className="text-[0.75rem] text-ink-500">Total Bill</dt>
-            <dd className="mt-0.5 text-[1.12rem] font-extrabold tracking-tight text-ink-900">
+            <dd className="mt-0.5 text-[1.12rem] font-extrabold tracking-tight tabular-nums text-ink-900">
               {formatNaira(bill.totalAmount)}
             </dd>
           </div>
           <div className="px-3">
             <dt className="text-[0.75rem] text-ink-500">Raised</dt>
-            <dd className="mt-0.5 text-[1rem] font-bold tracking-tight text-ink-900">{formatNaira(bill.raisedAmount)}</dd>
+            <dd className="mt-0.5 text-[1rem] font-bold tracking-tight tabular-nums text-ink-900">{formatNaira(bill.raisedAmount)}</dd>
           </div>
           <div className="pl-3">
             <dt className="text-[0.75rem] text-ink-500">Remaining</dt>
-            <dd className={`mt-0.5 text-[1rem] font-bold tracking-tight ${remaining === 0 ? "text-success-600" : "text-ink-900"}`}>
+            <dd className={`mt-0.5 text-[1rem] font-bold tracking-tight tabular-nums ${remaining === 0 ? "text-success-600" : "text-ink-900"}`}>
               {formatNaira(remaining)}
             </dd>
           </div>

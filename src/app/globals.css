@@ -62,7 +62,6 @@
     background: var(--color-cream-50);
     color: var(--color-ink-900);
     font-family: var(--font-sans);
-    font-feature-settings: "tnum" 1;
   }
   :focus-visible {
     outline: 2px solid var(--color-gold-500);

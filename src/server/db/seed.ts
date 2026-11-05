@@ -3,9 +3,10 @@ import type { Bill } from "@/lib/types";
 const DAY = 24 * 60 * 60 * 1000;
 const img = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=900&q=75`;
 
-type SeedBill = Omit<Bill, "deadline" | "createdAt" | "completedAt"> & {
+type SeedBill = Omit<Bill, "deadline" | "createdAt" | "completedAt" | "fundedAt"> & {
   daysLeft: number;
   ageDays: number;
+  fundedDaysAgo?: number;
   completedDaysAgo?: number;
 };
 
@@ -163,6 +164,7 @@ const SEED: SeedBill[] = [
     allowsPartialPayments: true,
     daysLeft: 3,
     ageDays: 7,
+    fundedDaysAgo: 1,
   },
   {
     id: "ade-textbooks",
@@ -197,6 +199,7 @@ const SEED: SeedBill[] = [
     allowsPartialPayments: true,
     daysLeft: 9,
     ageDays: 20,
+    fundedDaysAgo: 5,
     completedDaysAgo: 2,
   },
   {
@@ -271,10 +274,11 @@ const SEED: SeedBill[] = [
 
 /** Builds seed bills with deadlines relative to `now`, so a fresh install always has live bills. */
 export function createSeedBills(now: number): Bill[] {
-  return SEED.map(({ daysLeft, ageDays, completedDaysAgo, ...bill }) => ({
+  return SEED.map(({ daysLeft, ageDays, fundedDaysAgo, completedDaysAgo, ...bill }) => ({
     ...bill,
     deadline: new Date(now + daysLeft * DAY).toISOString(),
     createdAt: new Date(now - ageDays * DAY).toISOString(),
+    ...(fundedDaysAgo !== undefined ? { fundedAt: new Date(now - fundedDaysAgo * DAY).toISOString() } : {}),
     ...(completedDaysAgo !== undefined ? { completedAt: new Date(now - completedDaysAgo * DAY).toISOString() } : {}),
   }));
 }

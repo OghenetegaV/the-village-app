@@ -35,3 +35,35 @@ export function formatDate(iso: string): string {
     new Date(iso),
   );
 }
+
+const LAGOS = "Africa/Lagos";
+
+/** "Just now", "5m ago", "3h ago", "2d ago", then a date. */
+export function formatRelative(iso: string, now: number): string {
+  const diff = Math.max(0, now - new Date(iso).getTime());
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "Just now";
+  if (min < 60) return `${min}m ago`;
+  const hours = Math.floor(min / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return formatDate(iso);
+}
+
+/** Morning / afternoon / evening in Nigerian time. */
+export function greeting(now: number): string {
+  const hour = Number(new Intl.DateTimeFormat("en-NG", { hour: "numeric", hourCycle: "h23", timeZone: LAGOS }).format(now));
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
+
+/** "2026-11" in Nigerian time — for monthly buckets. */
+export function monthKey(ms: number): string {
+  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", timeZone: LAGOS }).formatToParts(ms);
+  return `${parts.find((p) => p.type === "year")!.value}-${parts.find((p) => p.type === "month")!.value}`;
+}
+
+export function monthLabel(key: string): string {
+  const [y, m] = key.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-NG", { month: "short", timeZone: "UTC" }).format(Date.UTC(y, m - 1, 15));
+}

@@ -1,7 +1,7 @@
 import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import type { Bill, Payment } from "@/lib/types";
+import type { AuditEntry, Bill, Notification, Payment, Session, User } from "@/lib/types";
 import { createSeedBills } from "./seed";
 
 /**
@@ -14,6 +14,10 @@ import { createSeedBills } from "./seed";
 export interface DatabaseShape {
   bills: Bill[];
   payments: Payment[];
+  users: User[];
+  sessions: Session[];
+  notifications: Notification[];
+  auditLog: AuditEntry[];
 }
 
 const DATA_DIR = process.env.VILLAGE_DATA_DIR ?? path.join(process.cwd(), ".data");
@@ -24,10 +28,19 @@ let queue: Promise<unknown> = Promise.resolve();
 async function load(): Promise<DatabaseShape> {
   try {
     const raw = await fs.readFile(DB_FILE, "utf8");
-    return JSON.parse(raw) as DatabaseShape;
+    const data = JSON.parse(raw) as Partial<DatabaseShape>;
+    // Forward-compatible with data files created before a collection existed.
+    return { bills: [], payments: [], users: [], sessions: [], notifications: [], auditLog: [], ...data };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    const seeded: DatabaseShape = { bills: createSeedBills(Date.now()), payments: [] };
+    const seeded: DatabaseShape = {
+      bills: createSeedBills(Date.now()),
+      payments: [],
+      users: [],
+      sessions: [],
+      notifications: [],
+      auditLog: [],
+    };
     await persist(seeded);
     return seeded;
   }

@@ -19,11 +19,11 @@ export function LogoMark({ className = "size-9" }: { className?: string }) {
 
 export function Logo() {
   return (
-    <Link href="/bills" className="flex items-center gap-2.5" aria-label="VILLAGE home">
-      <LogoMark className="size-10 shrink-0" />
+    <Link href="/home" className="flex min-w-0 items-center gap-2" aria-label="VILLAGE home">
+      <LogoMark className="size-9 shrink-0 min-[400px]:size-10" />
       <span className="flex flex-col leading-none">
-        <span className="font-serif text-[1.9rem] font-semibold tracking-[0.02em] text-maroon-700">VILLAGE</span>
-        <span className="mt-1 text-[0.56rem] font-semibold tracking-[0.18em] whitespace-nowrap text-maroon-700/80">
+        <span className="font-serif text-[1.6rem] font-semibold tracking-[0.02em] min-[400px]:text-[1.85rem] text-maroon-700">VILLAGE</span>
+        <span className="mt-1 text-[0.5rem] font-semibold tracking-[0.13em] min-[400px]:text-[0.55rem] min-[400px]:tracking-[0.16em] whitespace-nowrap text-maroon-700/80">
           REAL PEOPLE · REAL NEEDS · TOGETHER
         </span>
       </span>

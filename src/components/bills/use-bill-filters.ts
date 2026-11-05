@@ -14,28 +14,28 @@ import { isPriceRangeId } from "@/lib/price-ranges";
 export function useBillFilters() {
   const params = useSearchParams();
 
-  const filters = useMemo<BillFilters>(() => {
-    const category = params.get("category");
-    const price = params.get("price");
-    return {
-      category: isCategoryId(category) ? category : null,
-      price: isPriceRangeId(price) ? price : null,
-    };
-  }, [params]);
+  const filters = useMemo(() => parseFilters(params), [params]);
 
-  const setFilters = useCallback(
-    (next: Partial<BillFilters>) => {
-      const merged = { ...filters, ...next };
-      const qs = new URLSearchParams();
-      if (merged.price) qs.set("price", merged.price);
-      if (merged.category) qs.set("category", merged.category);
-      const query = qs.toString();
-      window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
-    },
-    [filters],
-  );
+  const setFilters = useCallback((next: Partial<BillFilters>) => {
+    // Merge with the live URL rather than the last render, so rapid successive changes compose.
+    const merged = { ...parseFilters(new URLSearchParams(window.location.search)), ...next };
+    const qs = new URLSearchParams();
+    if (merged.price) qs.set("price", merged.price);
+    if (merged.category) qs.set("category", merged.category);
+    const query = qs.toString();
+    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+  }, []);
 
   const resetFilters = useCallback(() => setFilters({ category: null, price: null }), [setFilters]);
 
   return { filters, setFilters, resetFilters };
+}
+
+function parseFilters(params: Pick<URLSearchParams, "get">): BillFilters {
+  const category = params.get("category");
+  const price = params.get("price");
+  return {
+    category: isCategoryId(category) ? category : null,
+    price: isPriceRangeId(price) ? price : null,
+  };
 }
