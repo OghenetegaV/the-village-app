@@ -1,12 +1,14 @@
 import { isValidWebhookSignature, PaymentGatewayError, type VerifiedTransaction } from "@/server/payments/paystack";
 import { confirmPayment } from "@/server/payments/service";
+import { handleSubscriptionEvent } from "@/server/payments/subscriptions";
 
 /**
  * Paystack webhook. Register this URL in the Paystack dashboard:
  *   https://<your-domain>/api/payments/paystack/webhook
  *
  * The callback page also confirms payments, but the webhook guarantees bills are credited even if
- * the contributor closes their browser before being redirected back.
+ * the contributor closes their browser before being redirected back. It also handles VILLAGE Plus
+ * subscription events (first payment, renewals, cancellations).
  */
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -21,6 +23,11 @@ export async function POST(request: Request) {
   }
 
   const event = JSON.parse(rawBody) as { event: string; data: VerifiedTransaction };
+
+  // VILLAGE Plus events are handled (and re-verified) by the subscription service.
+  if (await handleSubscriptionEvent(event.event, event.data)) {
+    return new Response("ok", { status: 200 });
+  }
 
   if (event.event === "charge.success") {
     // The signature proves the event came from Paystack, but we still re-verify against the API so

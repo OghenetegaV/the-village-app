@@ -1,7 +1,19 @@
 import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import type { AuditEntry, Bill, Notification, Payment, Session, User } from "@/lib/types";
+import type {
+  AuditEntry,
+  Bill,
+  Contract,
+  Notification,
+  Payment,
+  ProProfile,
+  RoomMessage,
+  Session,
+  Subscription,
+  SubscriptionCheckout,
+  User,
+} from "@/lib/types";
 import { createSeedBills } from "./seed";
 
 /**
@@ -18,6 +30,11 @@ export interface DatabaseShape {
   sessions: Session[];
   notifications: Notification[];
   auditLog: AuditEntry[];
+  pros: ProProfile[];
+  roomMessages: RoomMessage[];
+  contracts: Contract[];
+  subscriptions: Subscription[];
+  subscriptionCheckouts: SubscriptionCheckout[];
 }
 
 const DATA_DIR = process.env.VILLAGE_DATA_DIR ?? path.join(process.cwd(), ".data");
@@ -25,21 +42,33 @@ const DB_FILE = path.join(DATA_DIR, "village-db.json");
 
 let queue: Promise<unknown> = Promise.resolve();
 
+function emptyCollections(): DatabaseShape {
+  return {
+    bills: [],
+    payments: [],
+    users: [],
+    sessions: [],
+    notifications: [],
+    auditLog: [],
+    pros: [],
+    roomMessages: [],
+    contracts: [],
+    subscriptions: [],
+    subscriptionCheckouts: [],
+  };
+}
+
 async function load(): Promise<DatabaseShape> {
   try {
     const raw = await fs.readFile(DB_FILE, "utf8");
     const data = JSON.parse(raw) as Partial<DatabaseShape>;
     // Forward-compatible with data files created before a collection existed.
-    return { bills: [], payments: [], users: [], sessions: [], notifications: [], auditLog: [], ...data };
+    return { ...emptyCollections(), ...data };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     const seeded: DatabaseShape = {
+      ...emptyCollections(),
       bills: createSeedBills(Date.now()),
-      payments: [],
-      users: [],
-      sessions: [],
-      notifications: [],
-      auditLog: [],
     };
     await persist(seeded);
     return seeded;

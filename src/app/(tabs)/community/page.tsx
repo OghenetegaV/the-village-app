@@ -4,6 +4,7 @@ import { CircleCheckBig, HandCoins, UsersRound } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { ActivityFeed } from "@/components/community/ActivityFeed";
 import { PageTitle, StatTile } from "@/components/ui/Blocks";
+import { CommunityTabs } from "@/components/pro/ProBits";
 import { formatNairaCompact } from "@/lib/format";
 import { requestTime } from "@/server/clock";
 import { activityFeed, snapshot, villageStats } from "@/server/insights";
@@ -15,6 +16,7 @@ export default function CommunityPage() {
     <>
       <AppHeader />
       <PageTitle title="Community" subtitle="Every contribution, new bill and milestone across the village." />
+      <CommunityTabs active="activity" />
       <Suspense fallback={<div className="mx-4 mt-6 h-96 animate-pulse rounded-3xl bg-cream-200/70 sm:mx-6" />}>
         <Community />
       </Suspense>

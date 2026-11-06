@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { BadgeCheck, Banknote, Bell, CheckCheck, CircleCheckBig, HandHeart, Sparkles, TriangleAlert, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Banknote, Bell, Briefcase, CheckCheck, CircleCheckBig, Crown, HandHeart, Handshake, Sparkles, TriangleAlert, type LucideIcon } from "lucide-react";
 import { markAllNotificationsRead, openNotification } from "@/app/actions/notifications";
 import { BackButton } from "@/components/layout/BackButton";
 import { EmptyPanel } from "@/components/ui/Blocks";
@@ -19,6 +19,9 @@ const ICONS: Record<NotificationKind, { icon: LucideIcon; className: string }> =
   bill_verified: { icon: BadgeCheck, className: "bg-gold-100 text-gold-600" },
   bill_removed: { icon: TriangleAlert, className: "bg-maroon-100 text-maroon-700" },
   payout_made: { icon: Banknote, className: "bg-success-100 text-success-600" },
+  contract_interest: { icon: Briefcase, className: "bg-gold-100 text-gold-600" },
+  contract_awarded: { icon: Handshake, className: "bg-success-100 text-success-600" },
+  plus_activated: { icon: Crown, className: "bg-gold-100 text-gold-600" },
 };
 
 export default function NotificationsPage() {

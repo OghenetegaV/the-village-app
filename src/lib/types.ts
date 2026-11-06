@@ -1,5 +1,7 @@
 import type { CategoryId } from "./categories";
 import type { Role } from "./roles";
+import type { TradeId } from "./trades";
+import type { NigerianState } from "./nigeria";
 
 /** All monetary values are whole Nigerian naira (₦). Convert to kobo only at the payment-provider boundary. */
 export type Naira = number;
@@ -100,7 +102,10 @@ export type NotificationKind =
   | "bill_funded"
   | "bill_verified"
   | "bill_removed"
-  | "payout_made";
+  | "payout_made"
+  | "contract_interest"
+  | "contract_awarded"
+  | "plus_activated";
 
 export interface Notification {
   id: string;
@@ -123,4 +128,77 @@ export interface AuditEntry {
   billId: string;
   note?: string;
   at: string;
+}
+
+/* ------------------------------------------------------------ Pro rooms */
+
+export interface ProProfile {
+  userId: string;
+  trade: TradeId;
+  /** Short description, e.g. "Commercial litigation · 8 years". */
+  headline: string;
+  state: NigerianState;
+  yearsExperience: number;
+  /** Self-declared professional registration number. Shown as "licence on file", not verified. */
+  licenseNumber: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RoomMessage {
+  id: string;
+  trade: TradeId;
+  userId: string;
+  body: string;
+  createdAt: string;
+  deletedAt?: string;
+}
+
+export interface ContractApplicant {
+  userId: string;
+  note: string | null;
+  at: string;
+}
+
+export interface Contract {
+  id: string;
+  trade: TradeId;
+  posterId: string;
+  title: string;
+  description: string;
+  state: NigerianState;
+  /** Optional budget in naira; null = "open to quotes". */
+  budget: Naira | null;
+  startBy: string | null; // YYYY-MM-DD
+  status: "open" | "awarded" | "closed";
+  awardedTo?: string;
+  applicants: ContractApplicant[];
+  createdAt: string;
+}
+
+/* --------------------------------------------------------- Subscriptions */
+
+export interface Subscription {
+  userId: string;
+  planCode: string;
+  /** active = renews automatically; non_renewing = cancelled, still valid until period end. */
+  status: "active" | "non_renewing" | "expired";
+  currentPeriodEnd: string;
+  /** Paystack identifiers, needed to cancel or match renewals. */
+  customerCode?: string;
+  subscriptionCode?: string;
+  emailToken?: string;
+  /** Transaction references already applied, so a renewal is never counted twice. */
+  appliedReferences: string[];
+  startedAt: string;
+}
+
+/** A Plus checkout we started and are waiting for Paystack to confirm. */
+export interface SubscriptionCheckout {
+  reference: string;
+  userId: string;
+  planCode: string;
+  amountKobo: number;
+  status: "pending" | "success" | "failed";
+  createdAt: string;
 }

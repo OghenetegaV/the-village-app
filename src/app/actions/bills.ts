@@ -9,6 +9,7 @@ import type { Bill } from "@/lib/types";
 import { BILL_LIMITS } from "@/lib/bill-limits";
 import { getCurrentUser } from "@/server/auth/session";
 import { transaction } from "@/server/db/store";
+import { billQuota } from "@/server/plans";
 
 export interface PostBillState {
   error?: string;
@@ -75,7 +76,10 @@ export async function postBill(_prev: PostBillState, formData: FormData): Promis
   const slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
   const id = `${slug || "bill"}-${randomBytes(3).toString("hex")}`;
 
-  await transaction((db) => {
+  const blocked = await transaction((db) => {
+    // Enforced inside the write lock so rapid double-submits can't exceed the weekly allowance.
+    const quota = billQuota(db, user.id, now);
+    if (!quota.allowed) return quota.reason;
     db.bills.push({
       id,
       ownerId: user.id,
@@ -93,7 +97,9 @@ export async function postBill(_prev: PostBillState, formData: FormData): Promis
       deadline: deadline.toISOString(),
       createdAt: new Date(now).toISOString(),
     });
+    return null;
   });
 
+  if (blocked) return { error: blocked, values: raw };
   redirect(`/bills/${id}`);
 }

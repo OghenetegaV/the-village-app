@@ -15,6 +15,11 @@ import { PaymentStatusBadge } from "@/components/ui/PaymentStatusBadge";
 import { listBillsByOwner, listContributionsByUser } from "@/server/bills-repository";
 import { requireUser } from "@/server/auth/session";
 import { requestTime } from "@/server/clock";
+import { read } from "@/server/db/store";
+import { isPlusActive, subscriptionOf } from "@/server/plans";
+import { proProfileOf } from "@/server/pros";
+import { getTrade } from "@/lib/trades";
+import { Briefcase, ChevronRight, Crown } from "lucide-react";
 
 export const metadata: Metadata = { title: "My account" };
 
@@ -43,6 +48,7 @@ async function Account({ searchParams }: { searchParams: Promise<Record<string, 
       )}
 
       <ProfileCard user={user} />
+      <MembershipLinks userId={user.id} />
 
       {user.role === "supporter" ? <SupporterActivity userId={user.id} /> : <BeneficiaryBills userId={user.id} />}
 
@@ -220,5 +226,41 @@ function Empty({ text, cta }: { text: string; cta: { href: string; label: string
         {cta.label}
       </Link>
     </div>
+  );
+}
+
+async function MembershipLinks({ userId }: { userId: string }) {
+  const [db, now] = await Promise.all([read(), requestTime()]);
+  const sub = subscriptionOf(db, userId);
+  const plus = isPlusActive(sub, now);
+  const pro = proProfileOf(db, userId);
+  const row = "flex items-center gap-3 p-4 transition hover:bg-cream-50";
+  return (
+    <section aria-label="Membership" className="mt-3 divide-y divide-cream-200 rounded-3xl border border-cream-200 bg-white">
+      <Link href="/plus" className={row}>
+        <span className={`grid size-10 place-items-center rounded-full ${plus ? "bg-gold-500 text-white" : "bg-cream-100 text-gold-600"}`}>
+          <Crown className="size-5" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold text-ink-900">{plus ? "VILLAGE Plus" : "Free plan"}</span>
+          <span className="block text-xs text-ink-500">
+            {plus
+              ? `${sub!.status === "non_renewing" ? "Ends" : "Renews"} ${formatDate(sub!.currentPeriodEnd)}`
+              : "Upgrade for more fundraiser and contract slots"}
+          </span>
+        </span>
+        <ChevronRight className="size-4 text-ink-400" aria-hidden="true" />
+      </Link>
+      <Link href={pro ? `/community/rooms/${pro.trade}` : "/pro"} className={row}>
+        <span className="grid size-10 place-items-center rounded-full bg-cream-100 text-maroon-700">
+          <Briefcase className="size-5" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold text-ink-900">{pro ? `${getTrade(pro.trade).label} room` : "Professional profile"}</span>
+          <span className="block truncate text-xs text-ink-500">{pro ? pro.headline : "Join your trade's room and share contract work"}</span>
+        </span>
+        <ChevronRight className="size-4 text-ink-400" aria-hidden="true" />
+      </Link>
+    </section>
   );
 }

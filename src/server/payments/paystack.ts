@@ -111,3 +111,65 @@ export function isValidWebhookSignature(rawBody: string, signature: string | nul
   const b = Buffer.from(signature, "utf8");
   return a.length === b.length && timingSafeEqual(a, b);
 }
+
+/* ------------------------------------------------------- Subscriptions */
+
+export type PlanInterval = "hourly" | "daily" | "weekly" | "monthly" | "quarterly" | "biannually" | "annually";
+
+export interface PaystackPlan {
+  name: string;
+  plan_code: string;
+  amount: number; // kobo
+  interval: PlanInterval;
+  currency: string;
+}
+
+export async function fetchPlan(code: string): Promise<PaystackPlan> {
+  return call<PaystackPlan>(`/plan/${encodeURIComponent(code)}`);
+}
+
+/** Starts a checkout that, once paid, creates a recurring Paystack subscription on `planCode`. */
+export async function initializeSubscription(params: {
+  email: string;
+  planCode: string;
+  amountKobo: number;
+  reference: string;
+  callbackUrl: string;
+  metadata: Record<string, unknown>;
+}) {
+  return call<{ authorization_url: string; reference: string }>("/transaction/initialize", {
+    method: "POST",
+    body: JSON.stringify({
+      email: params.email,
+      amount: params.amountKobo,
+      plan: params.planCode,
+      currency: "NGN",
+      reference: params.reference,
+      callback_url: params.callbackUrl,
+      metadata: params.metadata,
+      channels: ["card"], // recurring billing needs a reusable card authorization
+    }),
+  });
+}
+
+/** Shape of the subscription-related fields on a verified transaction (Paystack returns a few variants). */
+export interface VerifiedSubscriptionCharge extends VerifiedTransaction {
+  plan?: string | { plan_code?: string } | null;
+  plan_object?: { plan_code?: string; interval?: PlanInterval } | null;
+  customer?: { email?: string; customer_code?: string };
+}
+
+export async function verifySubscriptionCharge(reference: string): Promise<VerifiedSubscriptionCharge> {
+  return call<VerifiedSubscriptionCharge>(`/transaction/verify/${encodeURIComponent(reference)}`);
+}
+
+export function planCodeOf(charge: Pick<VerifiedSubscriptionCharge, "plan" | "plan_object">): string | null {
+  if (typeof charge.plan === "string" && charge.plan) return charge.plan;
+  if (charge.plan && typeof charge.plan === "object" && charge.plan.plan_code) return charge.plan.plan_code;
+  return charge.plan_object?.plan_code ?? null;
+}
+
+/** Stops future renewals. The subscriber keeps access until the period they paid for ends. */
+export async function disableSubscription(code: string, emailToken: string) {
+  return call<unknown>("/subscription/disable", { method: "POST", body: JSON.stringify({ code, token: emailToken }) });
+}

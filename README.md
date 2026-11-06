@@ -63,6 +63,27 @@ Grant access with `VILLAGE_ADMIN_EMAILS=ops@village.ng,…` on the server. Admin
 
 Every admin action re-checks authorization on the server and re-checks the bill's state inside the write lock. That means a payout can't be recorded twice, or recorded for a bill that isn't fully funded.
 
+## Posting limits & VILLAGE Plus (`/plus`)
+
+All limits live in [src/lib/plans.ts](src/lib/plans.ts). Windows are rolling: a slot frees up 7 days after it was used.
+
+| Each week | Free | Plus |
+| --- | --- | --- |
+| New fundraisers | 1 | 4 |
+| Fundraisers open at once | 2 | 6 |
+| Contracts offered in Pro rooms | 2 | 10 |
+
+- **Enforcement:** limits are checked inside the write that saves the post, so double-submits can't slip past them. Removed bills still count, so deleting and re-posting doesn't reset the allowance.
+- **Plan setup:** Plus is a Paystack Plan. Create it in the dashboard (Products → Plans) and set `PAYSTACK_PLUS_PLAN_CODE`; the price and interval are read from Paystack. Without it, the page shows "coming soon".
+- **Activation:** Plus starts only after Paystack verifies the exact plan, amount and currency. Renewals arrive through the webhook (`charge.success` with the plan), are re-verified, and each payment reference is applied once.
+- **Cancelling:** calls Paystack's `subscription/disable`. The member keeps Plus until the end of the paid period.
+
+## Pro rooms (`/community/rooms`)
+
+- **Joining:** any member can add a professional profile at `/pro`: trade, headline, state, years of experience, and an optional licence number. Colleagues see "licence on file", never the number. Each trade in [src/lib/trades.ts](src/lib/trades.ts) has one room, and only members of that trade can read it, both on the page and through the messages endpoint.
+- **Chat:** messages are up to 1,000 characters, with a limit of 10 per minute. Authors can remove their own messages and admins can remove any. New messages arrive by polling `GET /api/rooms/[trade]/messages` every 4 seconds while the tab is visible. Swap in WebSockets or Server-Sent Events when you move to a real-time backend.
+- **Contracts:** members offer jobs with a location, optional budget and start date. "I'm interested" shares that applicant's email and phone with the poster only, and the poster is notified. When the poster awards the job, the awardee is notified and sees the poster's contact details.
+
 ## Notifications (`/notifications`)
 
 The bell shows the real unread count. Notifications are stored in the same write as the event that causes them:
@@ -71,6 +92,9 @@ The bell shows the real unread count. Notifications are stored in the same write
 - **Bill fully funded:** sent to the owner and every contributor ("You completed a bill!" for the person who finished it).
 - **Bill verified or removed:** sent to the owner.
 - **Payout made:** sent to the owner and every contributor.
+- **Contract interest:** sent to the poster.
+- **Contract awarded:** sent to the awardee.
+- **Plus activated:** sent to the subscriber.
 
 Opening a notification marks it read; "Mark all read" clears them all.
 

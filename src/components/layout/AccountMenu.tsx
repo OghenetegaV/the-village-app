@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, PlusCircle, ShieldCheck, UserRound } from "lucide-react";
+import { Briefcase, Crown, LogOut, PlusCircle, ShieldCheck, UserRound } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { logout } from "@/app/actions/auth";
 import { Avatar } from "@/components/ui/Avatar";
@@ -62,6 +62,12 @@ export function AccountMenu({ user }: { user: { fullName: string; email: string;
                 <PlusCircle className="size-4 text-gold-600" aria-hidden="true" /> Post a bill
               </Link>
             )}
+            <Link role="menuitem" href="/community/rooms" className={item} onClick={() => setOpen(false)}>
+              <Briefcase className="size-4 text-gold-600" aria-hidden="true" /> Pro rooms
+            </Link>
+            <Link role="menuitem" href="/plus" className={item} onClick={() => setOpen(false)}>
+              <Crown className="size-4 text-gold-600" aria-hidden="true" /> VILLAGE Plus
+            </Link>
             {user.isAdmin && (
               <Link role="menuitem" href="/admin" className={item} onClick={() => setOpen(false)}>
                 <ShieldCheck className="size-4 text-gold-600" aria-hidden="true" /> Admin console
