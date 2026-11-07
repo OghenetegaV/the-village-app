@@ -1,5 +1,6 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { isDurableStorage } from "../db/mode";
 
 /**
  * Minimal Paystack client (https://paystack.com/docs/api/transaction).
@@ -20,6 +21,12 @@ export class PaymentGatewayError extends Error {
 }
 
 function secretKey(): string {
+  if (!isDurableStorage()) {
+    throw new PaymentGatewayError(
+      "Payments are disabled until a database is connected (set DATABASE_URL), so no payment can be lost.",
+      "not_configured",
+    );
+  }
   const key = process.env.PAYSTACK_SECRET_KEY;
   if (!key) {
     throw new PaymentGatewayError(
@@ -30,8 +37,9 @@ function secretKey(): string {
   return key;
 }
 
+/** True only when Paystack keys are set *and* data is stored durably. */
 export function isPaystackConfigured(): boolean {
-  return Boolean(process.env.PAYSTACK_SECRET_KEY);
+  return Boolean(process.env.PAYSTACK_SECRET_KEY) && isDurableStorage();
 }
 
 interface PaystackEnvelope<T> {

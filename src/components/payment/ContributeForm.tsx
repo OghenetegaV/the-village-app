@@ -84,7 +84,7 @@ export function ContributeForm({
       {!paymentsEnabled && (
         <p role="alert" className="mt-4 flex gap-2 rounded-2xl bg-gold-100 p-3 text-sm text-ink-700">
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-gold-600" aria-hidden="true" />
-          Payments aren&apos;t set up on this server yet. Add your Paystack keys to enable checkout.
+          Payments aren&apos;t switched on for this site yet, so checkout is unavailable. No money will be taken.
         </p>
       )}
 

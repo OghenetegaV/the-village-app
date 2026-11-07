@@ -1,106 +1,47 @@
 import "server-only";
-import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import type {
-  AuditEntry,
-  Bill,
-  Contract,
-  Notification,
-  Payment,
-  ProProfile,
-  RoomMessage,
-  Session,
-  Subscription,
-  SubscriptionCheckout,
-  User,
-} from "@/lib/types";
-import { createSeedBills } from "./seed";
+import { createFileBackend } from "./file-backend";
+import { databaseUrl, storageMode } from "./mode";
+import { createPostgresBackend } from "./postgres-backend";
+import type { Backend, DatabaseShape } from "./shape";
+
+export type { DatabaseShape } from "./shape";
 
 /**
- * A small file-backed JSON store with serialized writes.
- *
- * It keeps the app self-contained for local development and single-instance deployments.
- * For multi-instance or serverless hosting, swap the implementation of `read`/`transaction`
- * for a real database (Postgres, etc.) — the repositories above it don't need to change.
+ * The app's single data-access entry point. Everything above this (repositories, services,
+ * pages) only uses read() and transaction(); the backend is chosen from the environment — see
+ * ./mode.ts.
  */
-export interface DatabaseShape {
-  bills: Bill[];
-  payments: Payment[];
-  users: User[];
-  sessions: Session[];
-  notifications: Notification[];
-  auditLog: AuditEntry[];
-  pros: ProProfile[];
-  roomMessages: RoomMessage[];
-  contracts: Contract[];
-  subscriptions: Subscription[];
-  subscriptionCheckouts: SubscriptionCheckout[];
-}
+let backend: Backend | null = null;
 
-const DATA_DIR = process.env.VILLAGE_DATA_DIR ?? path.join(process.cwd(), ".data");
-const DB_FILE = path.join(DATA_DIR, "village-db.json");
-
-let queue: Promise<unknown> = Promise.resolve();
-
-function emptyCollections(): DatabaseShape {
-  return {
-    bills: [],
-    payments: [],
-    users: [],
-    sessions: [],
-    notifications: [],
-    auditLog: [],
-    pros: [],
-    roomMessages: [],
-    contracts: [],
-    subscriptions: [],
-    subscriptionCheckouts: [],
-  };
-}
-
-async function load(): Promise<DatabaseShape> {
-  try {
-    const raw = await fs.readFile(DB_FILE, "utf8");
-    const data = JSON.parse(raw) as Partial<DatabaseShape>;
-    // Forward-compatible with data files created before a collection existed.
-    return { ...emptyCollections(), ...data };
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    const seeded: DatabaseShape = {
-      ...emptyCollections(),
-      bills: createSeedBills(Date.now()),
-    };
-    await persist(seeded);
-    return seeded;
+function getBackend(): Backend {
+  if (backend) return backend;
+  switch (storageMode()) {
+    case "postgres":
+      backend = createPostgresBackend(databaseUrl()!);
+      break;
+    case "ephemeral":
+      // Serverless: the deployment folder is read-only; the temp folder is the only writable place.
+      console.warn("[village] No DATABASE_URL — using temporary storage. Data will not persist; payments are disabled.");
+      backend = createFileBackend(path.join(os.tmpdir(), "village-data"));
+      break;
+    default:
+      backend = createFileBackend(process.env.VILLAGE_DATA_DIR ?? path.join(process.cwd(), ".data"));
   }
+  return backend;
 }
 
-async function persist(data: DatabaseShape) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  const tmp = `${DB_FILE}.${process.pid}.${Date.now()}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(data, null, 2), "utf8");
-  await fs.rename(tmp, DB_FILE);
-}
-
-/** Reads a consistent snapshot (waits for in-flight writes). */
+/** Reads a consistent snapshot of all data. */
 export function read(): Promise<DatabaseShape> {
-  const result = queue.then(load);
-  queue = result.catch(() => undefined);
-  return result;
+  return getBackend().read();
 }
 
 /**
- * Runs `fn` with exclusive access to the data and persists whatever it mutates.
- * Writes are serialized, so read-check-write sequences (e.g. crediting a payment once) are atomic
- * within this process.
+ * Runs `fn` with exclusive access to the data and persists whatever it mutates. Read-check-write
+ * sequences inside `fn` (crediting a payment once, enforcing limits) are atomic. Don't call
+ * read()/transaction() from inside `fn`.
  */
 export function transaction<T>(fn: (data: DatabaseShape) => T | Promise<T>): Promise<T> {
-  const result = queue.then(async () => {
-    const data = await load();
-    const value = await fn(data);
-    await persist(data);
-    return value;
-  });
-  queue = result.catch(() => undefined);
-  return result;
+  return getBackend().transaction(fn);
 }

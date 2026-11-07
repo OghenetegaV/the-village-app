@@ -113,9 +113,31 @@ A bill is credited **only** when Paystack reports `success` for the exact amount
 | `PAYSTACK_BASE_URL` | Optional override (staging proxy or a mock gateway in tests). |
 | `VILLAGE_DATA_DIR` | Optional location of the file data store. |
 
-## Data
+## Data & deployment
 
-Bills and payments live in a file-backed JSON store (`.data/village-db.json`, gitignored). It's seeded on first run with demo bills whose deadlines are relative to that run. Writes are serialized, which is safe for a single server instance. **For serverless or multi-instance hosting, swap in a real database** by replacing [src/server/db/store.ts](src/server/db/store.ts); the repositories and payment service don't need to change.
+The storage backend is chosen automatically ([src/server/db/mode.ts](src/server/db/mode.ts)):
+
+| Environment | Storage | Payments |
+| --- | --- | --- |
+| `DATABASE_URL` (or `POSTGRES_URL`) set | **Postgres**: one JSONB row, every write under a row lock, so it's safe across many server instances | ✅ |
+| Local / single server, no database | JSON file in `.data/` (gitignored) | ✅ |
+| Vercel with no database | Temporary folder that can reset at any time; a "Demo mode" banner is shown | ❌ switched off, so no payment can be lost |
+
+On first run the app creates its table and seeds the demo bills; there are no migrations to run.
+
+### Deploying to Vercel with Supabase
+
+1. **Create a database.** Create a project at [supabase.com](https://supabase.com). London or Frankfurt are the closest regions to Nigeria.
+2. **Copy the connection string.** Click **Connect** and copy the **Transaction pooler** URI (port **6543**). Replace `[YOUR-PASSWORD]` with your database password. If the password contains symbols such as `@`, `#` or `/`, URL-encode them.
+3. **Add it to Vercel.** Go to Project → Settings → Environment Variables and add `DATABASE_URL` with that URI, for Production and Preview. *Or* install the **Supabase** integration from the Vercel Marketplace, which sets `POSTGRES_URL` for you; that works too.
+4. **Add the other settings:** `PAYSTACK_SECRET_KEY`, `APP_URL` (your site's URL), `VILLAGE_ADMIN_EMAILS`, and optionally `PAYSTACK_PLUS_PLAN_CODE`.
+5. **Redeploy.** The demo banner disappears and payments switch on.
+
+Use the transaction pooler (port 6543), not the direct connection (5432). Serverless functions open many short-lived connections, which the pooler is built for, and the direct host is IPv6-only on Supabase's free plan.
+
+**Security:** Supabase exposes `public` tables through its Data API using the browser-visible anon key. When the app creates its table, it turns on row-level security with no policies and revokes access for the `anon` and `authenticated` roles, so the Data API can't read it. The app connects as the table owner and is unaffected. Never share the database URL; it grants full access.
+
+**Scaling:** the whole state is one JSONB document, which is fine for an early-stage app. As usage grows, move busy collections (payments, room messages) into their own tables behind the same `read()`/`transaction()` API.
 
 ## Structure
 
